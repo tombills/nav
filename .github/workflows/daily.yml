@@ -1,0 +1,40 @@
+name: Sync ai-bot.cn → index.html
+
+on:
+  schedule:
+    - cron: "17 18 * * *"   # 每天 UTC 18:17（北京时间次日 02:17）运行一次
+  workflow_dispatch: {}     # 允许在 Actions 页面手动触发
+
+permissions:
+  contents: write           # 允许 Action 用 GITHUB_TOKEN 自动提交 index.html / baseline
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Sync new tools from ai-bot.cn
+        run: python sync_ai_bot.py
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "无变更，跳过提交"
+          else
+            git commit -m "chore(sync): 从 ai-bot.cn 增量同步新增 AI 工具"
+            git push
+          fi
